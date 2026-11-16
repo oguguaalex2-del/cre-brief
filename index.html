@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CRE Morning Brief</title>
+<meta name="theme-color" content="#1f4e79">
+<meta name="description" content="Daily free Chicago commercial real estate news, readable offline.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CRE Brief">
+<style>
+:root{--bg:#fbfaf7;--fg:#1c1c1a;--mut:#6b6a65;--line:#e4e1da;--card:#fff;--acc:#1f4e79;--read:#a9a7a0}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe7;--mut:#9c9a93;--line:#2e2d2a;--card:#1f1f1d;--acc:#8fb8e3;--read:#5f5e59}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
+.off{display:none;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--mut);margin-bottom:12px}
+.off.show{display:block}
+h1{font-size:22px;margin:0}
+.sub{color:var(--mut);font-size:14px;margin:4px 0 16px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:24px 0 8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chips button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+.chips button[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+a.card{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0}
+a.card:active{opacity:.7}
+.meta{font-size:12px;color:var(--mut);display:flex;gap:8px;flex-wrap:wrap}
+.tag{color:var(--acc);font-weight:600}
+.t{font-weight:600;margin:4px 0 2px}
+.s{font-size:14px;color:var(--mut);margin:0}
+a.card.done .t{color:var(--read)}
+a.card.done .meta::after{content:"✓ read";color:var(--read)}
+.empty{color:var(--mut);font-size:14px}
+footer{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>CRE Morning Brief</h1>
+<p class="sub" id="sub"></p>
+<div class="off" id="off">You're offline — showing the last brief you downloaded. Summaries work; full articles need a connection.</div>
+<div class="chips" id="chips"></div>
+<h2>Today's 5</h2>
+<div id="top"></div>
+<h2>More this week</h2>
+<div id="more"></div>
+<footer>Free sources only. The one-line summaries give you the gist without opening anything; tap a card to read the full story on the source's site. Refreshes weekday mornings. Works offline once loaded.</footer>
+</main>
+<script>
+(function(){
+var readKey='crebrief-read',read={};
+try{read=JSON.parse(localStorage.getItem(readKey)||'{}')}catch(e){}
+function save(){try{localStorage.setItem(readKey,JSON.stringify(read))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var d,cur='All',chips=document.getElementById('chips');
+function card(i){var day=new Date(i.date+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+return '<a class="card'+(read[i.url]?' done':'')+'" href="'+esc(i.url)+'" target="_blank" rel="noopener" data-u="'+esc(i.url)+'"><div class="meta"><span class="tag">'+esc(i.type)+'</span><span>'+esc(i.source)+'</span><span>'+day+'</span></div><p class="t">'+esc(i.title)+'</p><p class="s">'+esc(i.summary)+'</p></a>'}
+function render(){['top','more'].forEach(function(id){var list=d.items.filter(function(i){return (id==='top')===!!i.top&&(cur==='All'||i.type===cur)});document.getElementById(id).innerHTML=list.length?list.map(card).join(''):'<p class="empty">Nothing in this category.</p>'})}
+function show(data){d=data;
+var dt=new Date(d.updated+'T12:00:00');
+document.getElementById('sub').textContent=(d.edition?d.edition+' · ':'')+'Updated '+dt.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+var types=['All'];d.items.forEach(function(i){if(types.indexOf(i.type)<0)types.push(i.type)});
+if(types.indexOf(cur)<0)cur='All';chips.innerHTML='';
+types.forEach(function(t){var b=document.createElement('button');b.textContent=t;b.setAttribute('aria-pressed',t===cur);b.onclick=function(){cur=t;[].forEach.call(chips.children,function(c){c.setAttribute('aria-pressed',c.textContent===cur)});render()};chips.appendChild(b)});
+render()}
+function offline(on){document.getElementById('off').classList.toggle('show',on)}
+fetch('news.json',{cache:'no-cache'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){offline(false);show(j)})
+.catch(function(){caches.match('news.json',{ignoreSearch:true}).then(function(r){return r&&r.json()}).then(function(j){offline(true);if(j)show(j);else document.getElementById('top').innerHTML='<p class="empty">No brief saved yet — open the app once while online.</p>'})});
+window.addEventListener('online',function(){offline(false)});
+window.addEventListener('offline',function(){offline(true)});
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a.card');if(a){read[a.getAttribute('data-u')]=1;save();a.classList.add('done')}});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+})();
+</script>
+</body>
+</html>
